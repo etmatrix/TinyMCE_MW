@@ -63,10 +63,11 @@ $wgExtensionCredits['other'][] = array(
 $wgHooks['ParserBeforeStrip'][]                 = 'wfTinymceParserCut';
 $wgHooks['ParserAfterTidy'][]                   = 'wfTinymceParserPaste';
 $wgHooks['ArticleAfterFetchContent'][]                   = 'wfCheckBeforeEdit';
+$wgHooks['ArticleAfterFetchContentObject'][]             = 'wfCheckBeforeEdit';
 $wgHooks['EditPage::showEditForm:initial'][]    = 'wfTinymceAddScript';
  
 ##Process the raw wikidb code before any internal processing is applied
-function wfTinymceParserCut ($q, $text) {
+function wfTinymceParserCut ($q, &$text) {
  
         global $wgTitle;
         global $wgTempText, $wgUseTinymce;
@@ -82,7 +83,7 @@ function wfTinymceParserCut ($q, $text) {
 }
  
 ##Process the wgTempText code (wikitext and html) and reformat it into html friendly $text
-function wfTinymceParserPaste ($q, $text) {
+function wfTinymceParserPaste ($q, &$text) {
  
         global $wgOut, $wgTitle, $wgParser;
         global $wgTempText, $wgTinymceToken, $wgUseTinymce;
@@ -96,7 +97,10 @@ function wfTinymceParserPaste ($q, $text) {
         if ($ns == -1) {
                 return true;
         }
- 
+
+        // Check if disable the parser
+        wfCheckBeforeEdit("",new WikitextContent($text));
+
         # TinyMCE can NOT be enabled for any pages that have data tags
         if ($ns_allowed and $wgUseTinymce) {
  
@@ -383,15 +387,22 @@ else{$wgOut->addScript("<script language=\"javascript\" type=\"text/javascript\"
 }
  
 # Check existing article for any tags we don't want TinyMCE parsing...
-function wfCheckBeforeEdit ($q, $text) { 
+function wfCheckBeforeEdit ($q, $content) { 
         global $wgUseTinymce;
- 
+
+        if($content instanceof WikitextContent) {
+            $text = $content->mText;
+        }else{
+            $text = $content;
+        }
+
         if (preg_match("|&lt;(data.*?)&gt;(.*?)&lt;/data&gt;|is", $text, $a)) {
                 $wgUseTinymce = false;
         }
         elseif(preg_match("|<(data.*?)>(.*?)</data>|is", $text, $a)) {
                 $wgUseTinymce = false;}
         else{$wgUseTinymce = true;}
+
         return true;
 }
  
